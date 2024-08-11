@@ -60,6 +60,9 @@ class NoteApp:
     
         self.root.bind('<Control-S>', self.create_new_pickle_file)
 
+        # Bind the delete_word function to Control + Backspace key combination
+        self.content_text.bind('<Control-BackSpace>', self.delete_word)
+
     def load_notes(self):
         try:
             with open(self.current_pickle_file, "rb") as f:
@@ -117,14 +120,34 @@ class NoteApp:
         self.load_note_list()
         self.search_entry.delete(0, tk.END)  # Clear the search field
 
+        self.select_note_in_list()
 
+    def delete_word(self, event):
+        text = self.content_text
+        cursor_position = text.index("insert")
+
+        # Find the end of the current word by searching for the next space character
+        word_end = text.search(r"\S", cursor_position, backwards=True, regexp=True)
+        word_end= text.index(f"{word_end}+1c") # Move word_end one character forward
+
+        word_start = text.search(r"\s", f"{word_end}", backwards=True, regexp=True)
+
+        if word_start==cursor_position:
+            word_start= 0.0
+        
+        word_start= text.index(f"{word_start}+2c") # Move word_start one character forward
+
+        text.delete(word_start, cursor_position)
 
     def auto_link(self):
         self.content_text.tag_remove("all_tags", "1.0", tk.END)  # Remove all existing tags
 
-        for title in self.notes.keys():
+        # Prepare a dictionary to store start and end positions for each title
+        tag_positions = {}
+
+        for title in sorted(self.notes.keys(), key=len, reverse=True):  # Sort by length, longest first
             pattern = title  # Ensure the pattern is properly escaped
-            
+
             # Normalize spaces in the pattern and content
             pattern = re.sub(r'\s+', ' ', pattern)
             content = self.content_text.get("1.0", tk.END)
@@ -137,20 +160,38 @@ class NoteApp:
                 start = self.content_text.search(pattern, start, stopindex=tk.END, nocase=True)
                 if not start:
                     break
-                end = f"{start}+{len(title)}c"
-                print(f"Tagging '{title}' from {start} to {end}")  # Debug: See if tagging occurs
-                
-                # Print content snippet being tagged for verification
-                # content_snippet = self.content_text.get(start, end)
-                # print(f"Content snippet: '{content_snippet}'")  
 
-                self.content_text.tag_add(title, start, end)
-                self.content_text.tag_config(title, foreground="blue", underline=1)
-                start = end
+                # Calculate the end position using the start index and the length of the title
+                start_index = self.content_text.index(start)
+                end_index = f"{start_index}+{len(pattern)}c"
 
-        # Debug: Print the full content for verification
-        # full_content = self.content_text.get("1.0", tk.END)
-        # print(f"Full content of note: '{full_content}'")
+                print(f"Tagging '{title}' from {start_index} to {end_index}")  # Debug: See if tagging occurs
+
+                # Check if the current range overlaps with an existing tag
+                overlap = False
+                for existing_title, positions in tag_positions.items():
+                    for pos_start, pos_end in positions:
+                        if self.content_text.compare(start_index, "<", pos_end) and self.content_text.compare(end_index, ">", pos_start):
+                            overlap = True
+                            break
+                    if overlap:
+                        break
+
+                if not overlap:
+                    # If there's no overlap, add the tag
+                    self.content_text.tag_add(title, start_index, end_index)
+                    self.content_text.tag_config(title, foreground="blue", underline=1)
+
+                    # Store the tag positions
+                    if title not in tag_positions:
+                        tag_positions[title] = []
+                    tag_positions[title].append((start_index, end_index))
+
+                start = end_index
+
+
+
+
 
 
 
@@ -203,7 +244,6 @@ class NoteApp:
 
         # Get the tags at that index
         tags = self.content_text.tag_names(index)
-        print(f"Tags at click: {tags}")  # Debug: See which tags are at the click location
 
         # Check if any tag matches a note title
         for tag in tags:
@@ -216,7 +256,30 @@ class NoteApp:
                 self.current_note_title = tag
                 self.auto_link()  # Reapply hyperlink tags for the new note
                 self.update_note_list_bold()
+                # Select the corresponding note in the note list
+                selected_index = list(self.notes.keys()).index(tag)
+                self.note_listbox.selection_clear(0, tk.END)
+                self.note_listbox.selection_set(selected_index)
+                self.note_listbox.see(selected_index)  # Scroll to the selected note
                 break
+    
+    def select_note_in_list(self):
+        # Get the current note title
+        current_title = self.current_note_title
+
+        # Check if the current note title exists in the notes
+        if current_title in self.notes:
+            # Find the index of the current note title in the note list
+            selected_index = list(self.notes.keys()).index(current_title)
+
+            # Clear any existing selection in the note list
+            self.note_listbox.selection_clear(0, tk.END)
+
+            # Set the selection to the index of the current note title
+            self.note_listbox.selection_set(selected_index)
+
+            # Scroll to the selected note in the note list
+            self.note_listbox.see(selected_index)
 
     def create_context_menu(self):
         self.context_menu = Menu(self.root, tearoff=0)

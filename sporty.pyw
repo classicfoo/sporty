@@ -63,6 +63,9 @@ class NoteApp:
         # Bind the delete_word function to Control + Backspace key combination
         self.content_text.bind('<Control-BackSpace>', self.delete_word)
 
+        self.update_title_bar()
+
+
     def load_notes(self):
         try:
             with open(self.current_pickle_file, "rb") as f:
@@ -311,6 +314,8 @@ class NoteApp:
             self.load_note_list()
             self.save_last_database()  # Save the current pickle file to the config file
             self.new_note()
+            self.update_title_bar()
+
 
     def create_new_pickle_file(self, event=None):
         new_file_path = filedialog.asksaveasfilename(defaultextension=".pkl", filetypes=[("Pickle files", "*.pkl")])
@@ -318,6 +323,12 @@ class NoteApp:
             self.current_pickle_file = new_file_path
             self.save_notes()
             self.save_last_database()
+            self.update_title_bar()
+
+
+    def update_title_bar(self):
+        file_name = os.path.basename(self.current_pickle_file)  # Get the file name with extension
+        self.root.title(f"Sporty Notes - {file_name}")
 
 if __name__ == "__main__":
     root = tk.Tk()

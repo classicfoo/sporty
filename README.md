@@ -120,15 +120,4 @@ Here's a **README file** written for the end user of your `Sporty Notes` applica
 
 * Ensure the exact note title (capitalization doesn’t matter) is written in the note content.
 
----
 
-## 📄 License
-
-This program is free for personal use.
-
----
-
-Would you like me to:
-
-* ✅ **Format this as a `README.md` file** with headings and markdown styling?
-* ✅ Or **write a simplified PDF-style user manual** for non-technical users?
